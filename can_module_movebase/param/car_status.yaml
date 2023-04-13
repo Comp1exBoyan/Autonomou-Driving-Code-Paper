@@ -1,0 +1,5 @@
+wheel_base: 1.855
+wheel_tread: 1.31
+wheel_radius: 0.341
+steering_ratio: 50.0
+twiststamped: true

@@ -1,0 +1,121 @@
+<?xml version="1.0"?>
+<launch>	
+
+
+  <arg name="input_sensor_points_topic" default="/filtered_points" doc="Sensor points topic"/>
+  <arg name="input_initial_pose_topic" default="/ekf_pose_with_covariance" doc="Initial position topic to align" />
+  <arg name="input_map_points_topic" default="/points_map" doc="Map points topic" />
+  <arg name="output_pose_topic" default="ndt_pose" doc="Estimated self position" />
+  <arg name="output_pose_with_covariance_topic" default="ndt_pose_with_covariance" doc="Estimated self position with covariance" />
+  <arg name="output_diagnostics_topic" default="diagnostics" doc="Diagnostic topic" />
+
+  <include file="$(find ndt_localizer)/launch/static_tf.launch" />
+  <include file="$(find ndt_localizer)/launch/map_loader.launch" />
+  <include file="$(find ndt_localizer)/launch/points_downsample.launch" />
+
+  <!-- tf -->
+  <arg name="base_frame" default="base_link" doc="Vehicle reference frame" />
+
+  <arg name="trans_epsilon" default="0.05" doc="The maximum difference between two consecutive transformations in order to consider convergence" />
+  <arg name="step_size" default="0.1" doc="The newton line search maximum step length" />
+  <arg name="resolution" default="2.0" doc="The ND voxel grid resolution" />
+  <arg name="max_iterations" default="30.0" doc="The number of iterations required to calculate alignment" />
+  <arg name="converged_param_transform_probability" default="3.0" doc="" />
+
+  <!--node pkg="tf" type="static_transform_publisher" name="map_to_base" args="-47.7 129 0.0 0 0 0 map base_link 10" /-->
+
+  <node pkg="ndt_localizer" type="ndt_localizer_node" name="ndt_localizer_node" output="screen">
+
+    <remap from="points_raw" to="$(arg input_sensor_points_topic)" />
+    <remap from="ekf_pose_with_covariance" to="$(arg input_initial_pose_topic)" />
+    <remap from="pointcloud_map" to="$(arg input_map_points_topic)" />
+    <remap from="ndt_pose" to="$(arg output_pose_topic)" />
+    <remap from="ndt_pose_with_covariance" to="$(arg output_pose_with_covariance_topic)" />
+    <remap from="diagnostics" to="$(arg output_diagnostics_topic)" />
+    <param name="base_frame" value="$(arg base_frame)" />
+    <param name="trans_epsilon" value="$(arg trans_epsilon)" />
+    <param name="step_size" value="$(arg step_size)" />
+    <param name="resolution" value="$(arg resolution)" />
+    <param name="max_iterations" value="$(arg max_iterations)" />
+    <param name="converged_param_transform_probability" value="$(arg converged_param_transform_probability)" />
+  </node>
+
+  <include file="$(find ndt_localizer)/launch/lexus.launch" />
+
+  <node pkg="tf" type="static_transform_publisher" name="base_to_velo" args="0 0 0 0 0 0 /base_link /velodyne 10" />
+
+  <node pkg="lc_for_control" type="lc_for_control"  name="lc_for_control" />
+
+  <node pkg="obstacle_map" type="obstacle_map" name="obstacle_map" output="screen">
+      <param name="sensor_height"            value="1.5"/>
+      <param name="th_dist"                  value="0.5"/>
+  </node>
+
+  <node pkg="obstacle_map" type="dynamic_object_detection" name="dynamic_object_detection" output="screen">
+      <param name="sliding_window_number"    value="10"/>
+      <param name="local_map_resolution"     value="0.15"/>
+  </node>
+
+<node pkg="pointcloud_to_laserscan" type="pointcloud_to_laserscan_node" name="pointcloud_to_laserscan">
+
+<remap from="cloud_in" to="/obstacle_point_cloud"/>
+<rosparam>
+    # target_frame: camera_link # Leave disabled to output scan in pointcloud frame
+    transform_tolerance: 0.01
+    min_height: -0.5
+    max_height: 2.0
+
+    angle_min: -3.1415 # -M_PI/2
+    angle_max: 3.1415 # M_PI/2
+    angle_increment: 0.003 # M_PI/360.0
+    scan_time: 0.1
+    range_min: 0.2
+    range_max: 150.0
+    use_inf: true
+
+    # Concurrency level, affects number of pointclouds queued for processing and number of threads used
+    # 0 : Detect number of cores
+    # 1 : Single threaded
+    # 2->inf : Parallelism level
+    concurrency_level: 1
+</rosparam>
+
+</node>
+
+    <arg name="fixed_frame" default="world"/>
+
+    <param name="robot_description" textfile="$(find hybrid_a_star)/model/car_model/default.urdf"/>
+    <!--node pkg="joint_state_publisher" type="joint_state_publisher" name="joint_state_publisher"/-->
+    <!--node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher"/-->
+
+    <!--node pkg="rviz" type="rviz" name="rviz" args="-d $(find hybrid_a_star)/rviz/display_hybrid_astar.rviz"/-->
+
+    <!--static_transform_publisher x y z yaw pitch roll frame_id child_frame_id period_in_ms-->
+    <node pkg="tf" type="static_transform_publisher" name="link1_broadcaster"
+          args="0 0 0 0 0 0 world map_2d 100"/>
+    <node pkg="tf" type="static_transform_publisher" name="link1_broadcaster_map2map3d" 
+          args="15.5 145 0 3.1415926 0 0 map_2d map 100"/>
+
+
+    <node pkg="map_server" type="map_server" name="map_server" args="$(find hybrid_a_star)/maps/map.yaml">
+         <param name="frame_id" value="map_2d" />
+    </node>
+
+    <node pkg="hybrid_a_star" type="hy_planner" name="hy_planner" output="screen">
+        <param name="planner/steering_angle" value="15.0"/>
+        <param name="planner/steering_angle_discrete_num" value="1"/>
+        <param name="planner/wheel_base" value="2.0"/>
+        <param name="planner/segment_length" value="1.6"/>
+        <param name="planner/segment_length_discrete_num" value="8"/>
+        <param name="planner/steering_penalty" value="1.5"/>
+        <param name="planner/reversing_penalty" value="10.0"/>
+        <param name="planner/steering_change_penalty" value="2.0"/>
+        <param name="planner/shot_distance" value="5.0"/>
+    </node>
+
+  <node name="can" pkg="can_module" type="can_module" respawn="false" output="screen"/>
+  <node pkg="joy" type="joy_node" name="joystick">
+   <param name="dev"  value="/dev/input/js0" />
+   </node>
+
+</launch>

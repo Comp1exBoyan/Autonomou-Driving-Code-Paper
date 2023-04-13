@@ -1,0 +1,21 @@
+{
+    "python.autoComplete.extraPaths": [
+        "/opt/ros/kinetic/lib/python2.7/dist-packages",
+        "/opt/intel/openvino_2020.2.120/python/python3.5",
+        "/opt/intel/openvino_2020.2.120/python/python3",
+        "/opt/intel/openvino_2020.2.120/deployment_tools/open_model_zoo/tools/accuracy_checker",
+        "/opt/intel/openvino_2020.2.120/deployment_tools/model_optimizer",
+        ""
+    ],
+    "files.associations": {
+        "bitset": "cpp",
+        "chrono": "cpp",
+        "algorithm": "cpp",
+        "hash_map": "cpp",
+        "hash_set": "cpp",
+        "vector": "cpp",
+        "*.tcc": "cpp",
+        "string": "cpp",
+        "geometry": "cpp"
+    }
+}
