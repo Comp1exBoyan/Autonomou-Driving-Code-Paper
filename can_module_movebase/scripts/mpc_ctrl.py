@@ -38,13 +38,13 @@ MAX_VEL = 2.0
 
 
 
-#车辆
-dt = 0.1  # 时间间隔，单位：s
-L = 2  # 车辆轴距，单位：m
-v = 2  # 初始速度
-x_0 = 0  # 初始x
-y_0 = -3  # 初始y
-psi_0 = 0  # 初始航向角
+#vehicle 
+dt = 0.1  # time interval 
+L = 2  # length of the vehicle 
+v = 2  # initial velocity
+x_0 = 0  # initial x
+y_0 = -3  # initial y
+psi_0 = 0  # initial yaw
 
 def get_nparray_from_matrix(x):
     return np.array(x).flatten()
@@ -67,7 +67,7 @@ class vehicle_model():
 
 	def state_update(self, data):
 		'''
-		订阅节点数据，更新状态
+		subscribe the node 
 		'''
 
 
@@ -75,11 +75,11 @@ class vehicle_model():
 		return self.x, self.y, self.psi, self.v
 
 	def state_space(self, ref_delta, ref_yaw):
-		"""将模型离散化后的状态空间表达
+		"""state space
 
 		Args:
-			ref_delta (_type_): 参考的转角控制量
-			ref_yaw (_type_): 参考的偏航角
+			ref_delta (_type_): reference steering angle
+			ref_yaw (_type_): reference pose angle
 
 		Returns:
 			_type_: _description_
@@ -125,15 +125,15 @@ def linear_mpc_control(xref, x0, delta_ref, ugv):   # ugv -- car model
     xref: reference point
     x0: initial state
     delta_ref: reference steer angle
-    ugv:车辆对象
-    returns: 最优的控制量和最优状态
+    ugv:vehicle
+    returns: optimal control and state
     """
 
     x = cvxpy.Variable((NX, T + 1))
     u = cvxpy.Variable((NU, T))
 
-    cost = 0.0  # 代价函数
-    constraints = []  # 约束条件
+    cost = 0.0  # cost function
+    constraints = []  # constraint
 
     for t in range(T):
         cost += cvxpy.quad_form(u[:, t]-delta_ref[:, t], R)   
@@ -173,7 +173,7 @@ def callback(data):
 	rospy.loginfo("vehicle state x: %lf, y: %lf, yaw: %lf")
 
 def state_listener():
-	#rospy.Subscriber('state', state, callback) 此处需要先定义
+	#rospy.Subscriber('state', state, callback) 
 
 	return 0
 
